@@ -30,7 +30,10 @@ pub trait HidOperations {
     fn get_input_report(&self) -> HidResult<Vec<u8>>;
     
     /// Get the feature report from the HID device.
-    fn get_feature_report(&self) -> HidResult<Vec<u8>>;
+    fn get_feature_report(&self, report_id: u8) -> HidResult<Vec<u8>>;
+
+    /// Send a feature report to the HID device.
+    fn send_feature_report<'a>(&self, buf: &'a [u8]) -> HidResult<()>;
 }
 
 impl<O: HidOperations, U> HidOperations for (O, U) {
@@ -38,8 +41,12 @@ impl<O: HidOperations, U> HidOperations for (O, U) {
         self.0.get_input_report()
     }
 
-    fn get_feature_report(&self) -> HidResult<Vec<u8>> {
-        self.0.get_feature_report()
+    fn get_feature_report(&self, report_id: u8) -> HidResult<Vec<u8>> {
+        self.0.get_feature_report(report_id)
+    }
+
+    fn send_feature_report<'a>(&self, buf: &'a [u8]) -> HidResult<()> {
+        self.0.send_feature_report(buf)
     }
 }
 

@@ -19,7 +19,7 @@ use nix::unistd::{access, read, write, AccessFlags};
 
 use crate::backend::hidraw::async_api::{read_with, write_with, AsyncFd};
 use crate::backend::hidraw::descriptor::HidrawReportDescriptor;
-use crate::backend::hidraw::ioctl::{hidraw_ioc_grdescsize, hidraw_ioc_ginput, hidraw_ioc_get_feature};
+use crate::backend::hidraw::ioctl::{hidraw_ioc_grdescsize, hidraw_ioc_ginput, hidraw_ioc_get_feature, hidraw_ioc_set_feature};
 use crate::backend::hidraw::uevent::{Action, UEvent};
 use crate::backend::{Backend, DeviceInfoStream};
 use crate::utils::TryIterExt;
@@ -254,11 +254,17 @@ impl HidOperations for HidDevice {
         Ok(buf)
     }
 
-    fn get_feature_report(&self) -> HidResult<Vec<u8>> {
-        let mut buf = vec![0u8; self.descriptor_size];
+    fn get_feature_report(&self, report_id: u8) -> HidResult<Vec<u8>> {
+        let mut buf = vec![report_id; self.descriptor_size];
         unsafe { hidraw_ioc_get_feature(self.device.as_raw_fd(), &mut buf) }
             .map_err(|e| HidError::message(format!("ioctl(GFEATURE) error, not a HIDRAW device?: {}", e)))?;
         Ok(buf)
+    }
+
+    fn send_feature_report<'a>(&self, buf: &'a [u8]) -> HidResult<()> {
+        unsafe { hidraw_ioc_set_feature(self.device.as_raw_fd(), &buf) }
+            .map_err(|e| HidError::message(format!("ioctl(SFEATURE) error, not a HIDRAW device?: {}", e)))?;
+        Ok(())
     }
 }
 
