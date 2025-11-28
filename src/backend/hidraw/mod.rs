@@ -133,11 +133,11 @@ impl Backend for HidRawBackend {
             })?
             .into();
 
-        let mut descriptor_size: i32 = 0;
-        unsafe { hidraw_ioc_grdescsize(fd.as_raw_fd(), &mut descriptor_size) }
+        let mut _descriptor_size: i32 = 0;
+        unsafe { hidraw_ioc_grdescsize(fd.as_raw_fd(), &mut _descriptor_size) }
             .map_err(|e| HidError::message(format!("ioctl(GRDESCSIZE) error for {:?}, not a HIDRAW device?: {}", id, e)))?;
 
-        let device = HidDevice { device: Arc::new(AsyncFd::new(fd)?), descriptor_size: descriptor_size as usize };
+        let device = HidDevice { device: Arc::new(AsyncFd::new(fd)?), _descriptor_size: _descriptor_size as usize };
 
         Ok((read.then(|| device.clone()), write.then(|| device.clone())))
     }
@@ -220,7 +220,7 @@ fn parse_hid_vid_pid(s: &str) -> Option<(u16, u16, u16)> {
 #[derive(Debug, Clone)]
 pub struct HidDevice {
     device: Arc<AsyncFd>,
-    descriptor_size: usize,
+    _descriptor_size: usize, // size of report descriptor
 }
 
 impl AsyncHidRead for HidDevice {
@@ -247,15 +247,15 @@ impl AsyncHidWrite for HidDevice {
 }
 
 impl HidOperations for HidDevice {
-    fn get_input_report(&self) -> HidResult<Vec<u8>> {
-        let mut buf = vec![0u8; self.descriptor_size];
+    fn get_input_report(&self, len: usize) -> HidResult<Vec<u8>> {
+        let mut buf = vec![0u8; len];
         unsafe { hidraw_ioc_ginput(self.device.as_raw_fd(), &mut buf) }
             .map_err(|e| HidError::message(format!("ioctl(GINPUT) error, not a HIDRAW device?: {}", e)))?;
         Ok(buf)
     }
 
-    fn get_feature_report(&self, report_id: u8) -> HidResult<Vec<u8>> {
-        let mut buf = vec![report_id; self.descriptor_size];
+    fn get_feature_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>> {
+        let mut buf = vec![report_id; len];
         unsafe { hidraw_ioc_get_feature(self.device.as_raw_fd(), &mut buf) }
             .map_err(|e| HidError::message(format!("ioctl(GFEATURE) error, not a HIDRAW device?: {}", e)))?;
         Ok(buf)
