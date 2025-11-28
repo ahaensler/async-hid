@@ -2,7 +2,7 @@ use std::ffi::c_void;
 
 use windows::core::{HRESULT, PCWSTR};
 use windows::Win32::Devices::HumanInterfaceDevice::{
-    HidD_FreePreparsedData, HidD_GetAttributes, HidD_GetFeature, HidD_GetInputReport, HidD_GetPreparsedData, HidD_GetProductString, HidD_GetSerialNumberString, HidP_GetCaps, HIDD_ATTRIBUTES, HIDP_CAPS, HIDP_STATUS_SUCCESS, PHIDP_PREPARSED_DATA
+    HidD_FreePreparsedData, HidD_GetAttributes, HidD_GetFeature, HidD_SetFeature, HidD_GetInputReport, HidD_GetPreparsedData, HidD_GetProductString, HidD_GetManufacturerString, HidD_GetSerialNumberString, HidP_GetCaps, HIDD_ATTRIBUTES, HIDP_CAPS, HIDP_STATUS_SUCCESS, PHIDP_PREPARSED_DATA
 };
 use windows::Win32::Foundation::{CloseHandle, ERROR_FILE_NOT_FOUND, HANDLE};
 use windows::Win32::Storage::FileSystem::{CreateFileW, FILE_FLAG_OVERLAPPED, FILE_SHARE_NONE, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING};
@@ -75,8 +75,12 @@ impl Device {
     }
 
     pub fn name(&self) -> HidResult<String> {
-        self.read_string(HidD_GetProductString)
-            .ok_or_else(|| windows::core::Error::from_win32().into())
+        let product = self.read_string(HidD_GetProductString)
+            .ok_or_else(|| windows::core::Error::from_win32())?;
+        let manufacturer = self.read_string(HidD_GetManufacturerString)
+            .ok_or_else(|| windows::core::Error::from_win32())?;
+        // return same format as hidraw backend
+        Ok(format!("{manufacturer} {product}"))
     }
 
     pub fn get_input_report(&self, input_report_length: usize) -> HidResult<Vec<u8>> {
@@ -85,10 +89,16 @@ impl Device {
         Ok(buf)
     }
 
-    pub fn get_feature_report(&self, feature_report_length: usize) -> HidResult<Vec<u8>> {
+    pub fn get_feature_report(&self, report_id: u8, feature_report_length: usize) -> HidResult<Vec<u8>> {
         let mut buf: Vec<u8> = vec![0; feature_report_length];
+        buf[0] = report_id;
         check_error(unsafe { HidD_GetFeature(self.0, buf.as_mut_ptr() as _, buf.capacity() as u32) })?;
         Ok(buf)
+    }
+
+    pub fn send_feature_report<'a>(&self, buf: &'a [u8]) -> HidResult<()> {
+        check_error(unsafe { HidD_SetFeature(self.0, buf.as_ptr() as _, buf.len() as u32) })?;
+        Ok(())
     }
 }
 
