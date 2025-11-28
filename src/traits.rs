@@ -27,7 +27,7 @@ pub trait HidOperations {
     /// Only use to do immediate reads of the input report.
     /// This should not be used to read input reports in a loop.
     /// For that use `read_input_report` from the `AsyncHidRead` trait.
-    fn get_input_report(&self, len: usize) -> HidResult<Vec<u8>>;
+    fn get_input_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>>;
     
     /// Get the feature report from the HID device.
     fn get_feature_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>>;
@@ -37,8 +37,8 @@ pub trait HidOperations {
 }
 
 impl<O: HidOperations, U> HidOperations for (O, U) {
-    fn get_input_report(&self, len: usize) -> HidResult<Vec<u8>> {
-        self.0.get_input_report(len)
+    fn get_input_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>> {
+        self.0.get_input_report(report_id, len)
     }
 
     fn get_feature_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>> {

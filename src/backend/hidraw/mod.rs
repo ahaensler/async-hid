@@ -247,18 +247,19 @@ impl AsyncHidWrite for HidDevice {
 }
 
 impl HidOperations for HidDevice {
-    fn get_input_report(&self, len: usize) -> HidResult<Vec<u8>> {
-        let mut buf = vec![0u8; len];
+    fn get_input_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>> {
+        let mut buf = vec![0u8; len+1];
+        buf[0] = report_id;
         unsafe { hidraw_ioc_ginput(self.device.as_raw_fd(), &mut buf) }
             .map_err(|e| HidError::message(format!("ioctl(GINPUT) error, not a HIDRAW device?: {}", e)))?;
-        Ok(buf)
+        Ok(buf[0..len].into())
     }
 
     fn get_feature_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>> {
-        let mut buf = vec![report_id; len];
+        let mut buf = vec![report_id; len+1];
         unsafe { hidraw_ioc_get_feature(self.device.as_raw_fd(), &mut buf) }
             .map_err(|e| HidError::message(format!("ioctl(GFEATURE) error, not a HIDRAW device?: {}", e)))?;
-        Ok(buf)
+        Ok(buf[0..len].into())
     }
 
     fn send_feature_report<'a>(&self, buf: &'a [u8]) -> HidResult<()> {

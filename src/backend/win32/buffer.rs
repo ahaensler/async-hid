@@ -221,8 +221,8 @@ impl IoBuffer<Writable> {
 }
 
 impl<T> HidOperations for IoBuffer<T> {
-    fn get_input_report(&self, len: usize) -> HidResult<Vec<u8>> {
-        self.device.get_input_report(len)
+    fn get_input_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>> {
+        self.device.get_input_report(report_id, len)
     }
 
     fn get_feature_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>> {
