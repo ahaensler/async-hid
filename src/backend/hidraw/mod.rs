@@ -135,7 +135,7 @@ impl Backend for HidRawBackend {
 
         let mut _descriptor_size: i32 = 0;
         unsafe { hidraw_ioc_grdescsize(fd.as_raw_fd(), &mut _descriptor_size) }
-            .map_err(|e| HidError::message(format!("ioctl(GRDESCSIZE) error for {:?}, not a HIDRAW device?: {}", id, e)))?;
+            .map_err(|e| HidError::message(format!("ioctl(GRDESCSIZE) error for {:?}: {}", id, e)))?;
 
         let device = HidDevice { device: Arc::new(AsyncFd::new(fd)?), _descriptor_size: _descriptor_size as usize };
 
@@ -251,20 +251,22 @@ impl HidOperations for HidDevice {
         let mut buf = vec![0u8; len+1];
         buf[0] = report_id;
         unsafe { hidraw_ioc_ginput(self.device.as_raw_fd(), &mut buf) }
-            .map_err(|e| HidError::message(format!("ioctl(GINPUT) error, not a HIDRAW device?: {}", e)))?;
+            .map_err(|e| HidError::message(format!("ioctl(GINPUT) error: {}", e)))?;
         Ok(buf[0..len].into())
     }
 
     fn get_feature_report(&self, report_id: u8, len: usize) -> HidResult<Vec<u8>> {
         let mut buf = vec![report_id; len+1];
         unsafe { hidraw_ioc_get_feature(self.device.as_raw_fd(), &mut buf) }
-            .map_err(|e| HidError::message(format!("ioctl(GFEATURE) error, not a HIDRAW device?: {}", e)))?;
+            .map_err(|e| HidError::message(format!("ioctl(GFEATURE) error: {}", e)))?;
         Ok(buf[0..len].into())
     }
 
-    fn send_feature_report<'a>(&self, buf: &'a [u8]) -> HidResult<()> {
-        unsafe { hidraw_ioc_set_feature(self.device.as_raw_fd(), &buf) }
-            .map_err(|e| HidError::message(format!("ioctl(SFEATURE) error, not a HIDRAW device?: {}", e)))?;
+    fn send_feature_report<'a>(&self, buf: &[u8]) -> HidResult<()> {
+        let mut buf = buf.to_vec();
+        // as of kernel 6.18, this ioctl works only as read/write
+        unsafe { hidraw_ioc_set_feature(self.device.as_raw_fd(), &mut buf) }
+            .map_err(|e| HidError::message(format!("ioctl(SFEATURE) error: {}", e)))?;
         Ok(())
     }
 }
